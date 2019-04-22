@@ -1,11 +1,21 @@
-import gdal
-import numpy,numba
+"""
+
+
+                    author: Bharath Reddy K
+
+
+                                            inputs: computation region,
+                                            points file-the location of all outlet points,
+                                            streams raster from qgis- to locate nearby streams.
+
+
+"""
+import gdal,osr,ogr,os,numba,numpy,sys
 from os import listdir,path,walk,system,sys
 from math import ceil,floor
 import time
 from numba import jit
 """
-    77.26744369,20.06364357
     Requires above mentioned packages
 """
 def readReleventArray(raster,gt,point):
@@ -82,13 +92,6 @@ def Core(inArray,point):
         # toChklist.remove(eachPoint)
         # toChklist=toChklist[1:]
     return outArray
-    # print toChklist
-    # while True:
-    #     pixelsIn=len(addedList)
-    #     for eachPoint in toChklist:
-    #         for i in range(0,8):
-    #             array[point[1],point[0]]
-    #         toChklist.remove(eachPoint)
 def getCatchment(gt,relArray,arrayBounds,pointPixel,outFile,proj):
     arrayTopCords=[gt[0]+arrayBounds[0]*gt[1],gt[3]+arrayBounds[1]*gt[5]]
     pointPixel=[pointPixel[0]-arrayBounds[0],pointPixel[1]-arrayBounds[1]]
@@ -100,17 +103,72 @@ def getCatchment(gt,relArray,arrayBounds,pointPixel,outFile,proj):
     outband = outRaster.GetRasterBand(1)
     outband.SetNoDataValue(0)
     outband.WriteArray(outArray)
-start = time. time()
-flowDirFile="/home/bharath/Documents/catchmentDelineation/data/testDir.tif"
-outFile="/home/bharath/Documents/catchmentDelineation/data/testWSnumba.tif"
-# segFile="D:\NHP\dev_catchment\data\\testSeg.tif"
-point=(77.20723842,19.95570563)
-compBuf=1
-raster=gdal.Open(flowDirFile)
-gt=raster.GetGeoTransform()
-proj=raster.GetProjection()
-relArray,arrayBounds,pointPixel=readReleventArray(raster,gt,point)
-# print (gdal.Open(segFile)).ReadAsArray(int(pointPixel[0]),int(pointPixel[1]),1,1)
-getCatchment(gt,relArray,arrayBounds,pointPixel,outFile,proj)
-end = time. time()
-print(end - start)
+##############################Enable this for Single known point
+# start = time. time()
+# flowDirFile="/home/bharath/Documents/catchmentDelineation/data/testDir.tif"
+# point=(77.20723842,19.95570563)
+# outFile="/home/bharath/Documents/catchmentDelineation/data/testWSnumba.tif"
+# compBuf=1
+# raster=gdal.Open(flowDirFile)
+# gt=raster.GetGeoTransform()
+# proj=raster.GetProjection()
+# relArray,arrayBounds,pointPixel=readReleventArray(raster,gt,point)
+# # print (gdal.Open(segFile)).ReadAsArray(int(pointPixel[0]),int(pointPixel[1]),1,1)
+# getCatchment(gt,relArray,arrayBounds,pointPixel,outFile,proj)
+# end = time. time()
+# print(end - start)
+##############################Enable this for CSV mode with multiple points/single point
+flowDirFile="Z:\\Nizamsagar_donotdelete\\telangana_reference\\telanganaDem\\outcdem\\telanganadrain.img"
+# flowDirFile=sys.argv[1]
+pointsFile=r"Z:\\TS_Project\\Adilabad\\districtsDigitization\\mancherial\\new\\ mancherialtanks_above100_acresmancherial.csv"
+
+delimtter=','
+with open(pointsFile,'r') as f:
+    data=f.read()
+data=data.split('\n')
+i=1
+for eachline in data:
+    if eachline!="":
+        start = time. time()
+        outFile=path.join(path.dirname(pointsFile),eachline.split(delimtter)[0][:6]+'_'+eachline.split(delimtter)[1][:6]+'.tif')
+        point=(float(eachline.split(delimtter)[0]),float(eachline.split(delimtter)[1]))
+        compBuf=0.25
+        raster=gdal.Open(flowDirFile)
+        gt=raster.GetGeoTransform()
+        proj=raster.GetProjection()
+        relArray,arrayBounds,pointPixel=readReleventArray(raster,gt,point)
+        # print (gdal.Open(segFile)).ReadAsArray(int(pointPixel[0]),int(pointPixel[1]),1,1)
+        getCatchment(gt,relArray,arrayBounds,pointPixel,outFile,proj)
+        outRast = gdal.Open(outFile)
+        outBand =  outRast.GetRasterBand(1)
+        proj=outRast.GetProjection()
+        srs=osr.SpatialReference()
+        srs.ImportFromWkt(proj)
+        outShapefile=outFile[:-4]+'.shp'
+        outDriver = ogr.GetDriverByName("ESRI Shapefile")
+        # Remove output shapefile if it already exists
+        if os.path.exists(outShapefile):
+            outDriver.DeleteDataSource(outShapefile)
+        # Create the output shapefile
+        outDataSource = outDriver.CreateDataSource(outShapefile)
+        outLayer = outDataSource.CreateLayer("polygon", srs, geom_type=ogr.wkbPolygon)
+        # Add an ID field
+        idField = ogr.FieldDefn("DN", ogr.OFTInteger)
+        outLayer.CreateField(idField)
+        print "polygonizing..."
+        gdal.Polygonize(outBand, None , outLayer, 0, [], callback=None )
+        j=0
+        for feat in outLayer:
+            if feat.GetField("DN")!=1:
+                outLayer.DeleteFeature(j)
+            j+=1
+        print "polygonized. :)"
+        outBand=None
+        outRast=None
+        if os.path.exists(outFile):
+            os.remove(outFile)
+        print i,"points completed"
+        i+=1
+        end = time. time()
+        print(end - start)
+##############################
