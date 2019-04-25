@@ -4,14 +4,15 @@ def get_latlon(conn):
     try:
         cur = conn.cursor()
         cur.execute("SELECT * from data_updation where status=0 order by created_at")
-        print("The number of parts: ", cur.rowcount)
+        # print("The number of parts: ", cur.rowcount)
         row = cur.fetchall()
 
         # while row is not None:
         #     print(row)
         #     row = cur.fetchone()
         try:
-            lat,lon=float(row[0].split(',')[1]),float(row[0].split(',')[0])
+            print row
+            lat,lon=float(row[0][1].split(',')[1]),float(row[0][1].split(',')[0])
         except:
             return "LatLonNotCorrect"
         cur.close()
@@ -44,6 +45,8 @@ def connect():
         if conn is not None:
             conn.close()
             print('Database connection closed.')
+            return latlon
+    latlon=None
     if latlon!=None:
         return latlon[0],latlon[1]
     else:
