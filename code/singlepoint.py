@@ -2,6 +2,7 @@ import gdal,ogr,osr,time,os,json
 from os import path
 from catchment import getCatchment,readReleventArray
 def singlepoint(point=None):
+    bufIncrement=0.25
     start = time. time()
     flowDirFile="D:/TWRIS/tankCatchment/jangaondrinagedirection.tif"
     if point is None:
@@ -14,7 +15,16 @@ def singlepoint(point=None):
     proj=raster.GetProjection()
     relArray,arrayBounds,pointPixel=readReleventArray(raster,gt,point,compBuf)
     # print (gdal.Open(segFile)).ReadAsArray(int(pointPixel[0]),int(pointPixel[1]),1,1)
-    getCatchment(gt,relArray,arrayBounds,pointPixel,outFile,proj)
+    result=getCatchment(gt,relArray,arrayBounds,pointPixel,outFile,proj)
+    while result==-1:
+        compBuf+=bufIncrement
+        relArray,arrayBounds,pointPixel=readReleventArray(raster,gt,point,compBuf)
+        result=getCatchment(gt,relArray,arrayBounds,pointPixel,outFile,proj)
+        if compBuf>1:
+            print "Please select a smaller stream or a coarser resolution DEM for same point,skipping point..."
+            break
+    if compBuf>1.5:
+        continue
     outRast = gdal.Open(outFile)
     outBand =  outRast.GetRasterBand(1)
     proj=outRast.GetProjection()
