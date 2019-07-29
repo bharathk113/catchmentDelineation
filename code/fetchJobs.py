@@ -3,7 +3,7 @@ import psycopg2
 def get_latlon(conn):
     try:
         cur = conn.cursor()
-        cur.execute("SELECT * from data_updation where status=0 order by created_at")
+        cur.execute("SELECT jobid,ST_X(geom),ST_Y(geom) from catchment.basetable where status='QUEUED' order by created_at")
         # print("The number of parts: ", cur.rowcount)
         row = cur.fetchall()
 
@@ -11,9 +11,12 @@ def get_latlon(conn):
         #     print(row)
         #     row = cur.fetchone()
         try:
-            print row
-            lat,lon=float(row[0][1].split(',')[1]),float(row[0][1].split(',')[0])
+            # print (row,type(row[1][1]))
+            lat,lon=float(row[0][1]),float(row[0][0])
+            # cur.execute("UPDATE catchment.basetable SET status='PROCESSING' where status='QUEUED' and jobid={}",row[0][0])
+            # lat,lon=float(row[0][1].split(',')[1]),float(row[0][1].split(',')[0])
         except:
+            print("LatLonNotCorrect")
             return "LatLonNotCorrect"
         cur.close()
         return lat,lon
@@ -29,7 +32,7 @@ def connect():
     conn = None
     try:
         # read connection parameters
-        params = {'database': 'snowmelt','user': 'postgres','password': 'postgres','host': '192.168.192.109','port': 5432}
+        params = {'database': 'postgis','user':'bharath','password':'@@Fr86tz','host': 'localhost','port': 5432}
         # params = config()
 
         # connect to the PostgreSQL server

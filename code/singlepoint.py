@@ -1,15 +1,21 @@
-import gdal,ogr,osr,time,os,json
+import gdal,ogr,osr,time,os,json,sys
 from os import path
 from catchment import getCatchment,readReleventArray
 def singlepoint(point=None):
     bufIncrement=0.25
     start = time. time()
-    flowDirFile="D:/TWRIS/tankCatchment/jangaondrinagedirection.tif"
+    flowDirFile="/home/bharath/Documents/Projects/catchmentDelineation/data/testDir.tif"
     if point is None:
         point=(79.17955793,17.90319865)
+    elif isinstance(point,str):
+        print("Provided point",point)
+        point=(float(point.split(',')[0]),float(point.split(',')[1]))
+    else:
+        point=(point[1],point[0])
     outFile=path.join(path.dirname(flowDirFile),str(point[0])+'_'+str(point[1])+'.tif')
+    print(outFile)
     # outFile="D:/TWRIS/tankCatchment/catchments_Jangaon/testWSnumba.tif"
-    compBuf=1
+    compBuf=0.5
     raster=gdal.Open(flowDirFile)
     gt=raster.GetGeoTransform()
     proj=raster.GetProjection()
@@ -21,10 +27,10 @@ def singlepoint(point=None):
         relArray,arrayBounds,pointPixel=readReleventArray(raster,gt,point,compBuf)
         result=getCatchment(gt,relArray,arrayBounds,pointPixel,outFile,proj)
         if compBuf>1:
-            print "Please select a smaller stream or a coarser resolution DEM for same point,skipping point..."
+            print ("Please select a smaller stream or a coarser resolution DEM for same point,skipping point...")
             break
-    if compBuf>1.5:
-        continue
+        if compBuf>1.5:
+            continue
     outRast = gdal.Open(outFile)
     outBand =  outRast.GetRasterBand(1)
     proj=outRast.GetProjection()
@@ -41,7 +47,7 @@ def singlepoint(point=None):
     # Add an ID field
     idField = ogr.FieldDefn("DN", ogr.OFTInteger)
     outLayer.CreateField(idField)
-    print "polygonizing..."
+    print ("polygonizing...")
     gdal.Polygonize(outBand, None , outLayer, 0, [], callback=None )
     # j=0
     # for feat in outLayer:
@@ -58,15 +64,15 @@ def singlepoint(point=None):
             jsondata['features'].pop(i)
     with open(outShapefile,'w') as jsonfile:
         json.dump(jsondata,jsonfile)
-    print "polygonized. :)"
+    print ("polygonized. :)")
     outBand=None
     outRast=None
     if os.path.exists(outFile):
         os.remove(outFile)
-    if os.path.exists(outShapefile):
-        os.remove(outShapefile)
-    print i,"points completed"
-    i+=1
+    # if os.path.exists(outShapefile):
+    #     os.remove(outShapefile)
+    # print (i,"points completed")
+    # i+=1
     end = time. time()
     print(end - start)
 singlepoint()

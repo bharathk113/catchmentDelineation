@@ -34,10 +34,10 @@ def readReleventArray(raster,gt,point,compBuf):
         sB=regionBounds[3]
     arrayBounds=[int((wB-gt[0])/gt[1]),int((nB-gt[3])/gt[5]),int((eB-gt[0])/gt[1]),int((sB-gt[3])/gt[5])]
     pointPixel=[floor((point[0]-gt[0])/gt[1]),floor((point[1]-gt[3])/gt[5])]
-    # print arrayBounds[0],arrayBounds[1],arrayBounds[2]-arrayBounds[0],arrayBounds[3]-arrayBounds[1]
-    print pointPixel
+    print (arrayBounds[0],arrayBounds[1],arrayBounds[2]-arrayBounds[0],arrayBounds[3]-arrayBounds[1])
+    print (pointPixel)
     releventArray=raster.ReadAsArray(arrayBounds[0],arrayBounds[1],arrayBounds[2]-arrayBounds[0]-1,arrayBounds[3]-arrayBounds[1]-1)
-    # print releventArray
+    # print (releventArray)
     return releventArray,arrayBounds,pointPixel
 @jit(nopython=True,nogil=True)
 def Core(inArray,point):
@@ -48,9 +48,10 @@ def Core(inArray,point):
     while iter<len(toChklist):
     # for eachPoint in toChklist:
         eachPoint=toChklist[iter]
-        if eachPoint[0]<0 or eachPoint[0]>=inArray.shape[0] or eachPoint[1]<0 or eachPoint>=inArray.shape[1]:
-            print "The buffer region is insufficient, increasing the buffer.."
-            return -1
+        if eachPoint[0]<0 or eachPoint[0]>=inArray.shape[0] or eachPoint[1]<0 or eachPoint[1]>=inArray.shape[1]:
+            print ("The buffer region is insufficient, increasing the buffer..")
+            outArray=numpy.full(inArray.shape,-1.0)
+            return outArray
         # if eachPoint!=None:
         #     continue
         # print eachPoint
@@ -97,9 +98,9 @@ def Core(inArray,point):
     return outArray
 def getCatchment(gt,relArray,arrayBounds,pointPixel,outFile,proj):
     arrayTopCords=[gt[0]+arrayBounds[0]*gt[1],gt[3]+arrayBounds[1]*gt[5]]
-    pointPixel=[pointPixel[0]-arrayBounds[0],pointPixel[1]-arrayBounds[1]]
+    pointPixel=(pointPixel[0]-arrayBounds[0],pointPixel[1]-arrayBounds[1])
     outArray=Core(relArray,pointPixel)
-    if outArray==-1:
+    if outArray.any()==-1:
         return -1
     driver = gdal.GetDriverByName('GTIFF')
     outRaster = driver.Create(outFile, relArray.shape[1],relArray.shape[0], 1, gdal.GDT_Byte, ['NBITS=1'])
